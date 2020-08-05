@@ -71,7 +71,7 @@ getMapper->使用JDK动态代理，为你传递过来的Dao接口生成代理对
 
 ![](D:\MDimages\mybatisimages\mybatis传统开发方式.png)
 
-**注：**若在"openSession(b:ture)"自动提交，则不需要"sqlSession.commit()" 手动提交。
+**注**：若在"openSession(b:ture)"自动提交，则不需要"sqlSession.commit()" 手动提交。
 
 
 
@@ -89,7 +89,7 @@ getMapper->使用JDK动态代理，为你传递过来的Dao接口生成代理对
 
 ④Mapper接口方法的输出参数类型和mapper.xml中定义的每个sql的resulttype的类型相同
 
-![](D:\GithubNotes\OwnStudyNotes\1.简单开源框架源码学习\mybatisimages\mapper映射.png)
+![](D:\MDimages\mybatisimages\mapper映射.png)
 
 
 
