@@ -61,7 +61,7 @@
 
 ​	**解决思路**：使用代理模式生成Dao层接口的代理实现类。 
 
-![](https://github.com/zkp0707/OwnStudyNotes/tree/master/images/mybatisimages/动态代理.png)
+![](./images/mybatisimages/动态代理.png)
 
 getMapper->使用JDK动态代理，为你传递过来的Dao接口生成代理对象proxyInstance->返回给userDao，所以userDao的类型就是proxy类型。->需明确：代理对象调用接口中的任意方法，都会执行invoke方法。
 
@@ -69,7 +69,7 @@ getMapper->使用JDK动态代理，为你传递过来的Dao接口生成代理对
 
 **1.传统开发方式**：
 
-![avatar](.\images\mybatisimages\mybatis传统开发方式.png)
+![](./images/mybatisimages/mybatis传统开发方式.png)
 
 **注**：若在"openSession(b:ture)"自动提交，则不需要"sqlSession.commit()" 手动提交。
 
@@ -77,7 +77,7 @@ getMapper->使用JDK动态代理，为你传递过来的Dao接口生成代理对
 
 **2.代理开发方式（主流）**：
 
-![avatar](.\images\mybatisimages\mybatis代理开发方式.png)
+![avatar](./images/mybatisimages/mybatis代理开发方式.png)
 
 **Mapper接口开发需要遵循以下规范**：
 
@@ -89,7 +89,7 @@ getMapper->使用JDK动态代理，为你传递过来的Dao接口生成代理对
 
 ④Mapper接口方法的输出参数类型和mapper.xml中定义的每个sql的resulttype的类型相同
 
-![avatar](.\images\mybatisimages\mapper映射.png)
+![](./images/mybatisimages/mapper映射.png)
 
 
 
