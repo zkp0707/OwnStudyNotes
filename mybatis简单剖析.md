@@ -65,15 +65,41 @@ getMapper->使用JDK动态代理，为你传递过来的Dao接口生成代理对
 
 **1.传统开发方式**：
 
-![](https://s1.ax1x.com/2020/08/06/agNlJH.png)
+```
+@Test
+public void test1() throws IOException{
+    //1.Resources工具类，配置文件的加载，把配置文件加载成字节输入流
+    Inputstream resourceAsstream = Resources.getResourceAsStream("sqlMapConfig.xml"
+   	//2.解析了配'置文件，并创建了sqLsessionFactory工厂
+    sqlsessionFactory sqlsessionFactory = new SqlSessionFactoryBuilder().build(resourceAsStream);
+    //3.生产sqLlsession
+    sqlSession sqlSession = sqlSessionFactory.openSession();//默认开启一个事务，但是该事务不会自动提交
+   															//在进行增删改操作时，要手动提交事务
+   	//4.sqlSession调用方法，查询所有selectList查询单个: selectone添加: insert修改:update删除: delete    
+    List<User> users = sqlsession.selectList( s: "user.findAl1");
+    for(user user : users) {
+    system.out.println(user);
+    sqlsession.close();
+}
+```
 
-**注**：若在"openSession(b:ture)"自动提交，则不需要"sqlSession.commit()" 手动提交。
-
-
+​	**注**：若在"openSession(b:ture)"自动提交，则不需要"sqlSession.commit()" 手动提交。
 
 **2.代理开发方式（主流）**：
 
-![](https://s1.ax1x.com/2020/08/06/agNKoD.png)
+```
+@Test
+public void test5() throws IOException {
+    Inputstream resourceAsstream = Resources.getResourceAsStream("sqlMapConfig.xml");
+    sqlSessionFactory sqlsessionFactory = new SqlSessionFactoryBuilder().build(resourceAsstream);
+    sqlsession sqlsession = sqlsessionFactory.openSession();
+    
+    IUserDao mapper = sqlsession.getMapper(IUserDao.class);
+    List<User> all = mapper.findAll();
+    for (User user : all) {
+		system.out.println(user);
+	}
+```
 
 **Mapper接口开发需要遵循以下规范**：
 
@@ -97,15 +123,15 @@ getMapper->使用JDK动态代理，为你传递过来的Dao接口生成代理对
 
 ```
 public void test1() throws IOException {
-        InputStream resourceAsStream = Resources.getResourceAsStream("sqlMapConfig.xml");
-        SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(resourceAsStream);
-        SqlSession sqlSession = sqlSessionFactory.openSession();
-        IOrderMapper mapper = sqlSession.getMapper(IOrderMapper.class);
-        List<Order> orderAndUser = mapper.findOrderAndUser();
-        for (Order order : orderAndUser) {
-            System.out.println(order);
-        }
+    InputStream resourceAsStream = Resources.getResourceAsStream("sqlMapConfig.xml");
+    SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(resourceAsStream);
+    SqlSession sqlSession = sqlSessionFactory.openSession();
+    IOrderMapper mapper = sqlSession.getMapper(IOrderMapper.class);
+    List<Order> orderAndUser = mapper.findOrderAndUser();
+    for (Order order : orderAndUser) {
+    System.out.println(order);
     }
+}
 ```
 
 **Tips1**：我们通常引用映射配置文件是:<mappers> <mapper resource="IUerMapper.xml"></mapper></mappers>。
