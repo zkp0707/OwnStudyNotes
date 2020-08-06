@@ -65,7 +65,7 @@
 
 getMapper->使用JDK动态代理，为你传递过来的Dao接口生成代理对象proxyInstance->返回给userDao，所以userDao的类型就是proxy类型。->需明确：代理对象调用接口中的任意方法，都会执行invoke方法。
 
-## 4.mybatis简单回顾
+## 4.mybatis简单回顾：
 
 **1.传统开发方式**：
 
@@ -90,6 +90,24 @@ getMapper->使用JDK动态代理，为你传递过来的Dao接口生成代理对
 ④Mapper接口方法的输出参数类型和mapper.xml中定义的每个sql的resulttype的类型相同
 
 ![](https://s1.ax1x.com/2020/08/06/agNudO.png)
+
+## 5.mybatis复杂映射开发：
+
+### 1.一对一查询
+
+**一对一查询需求**：查询一个订单，与此同时查询出该订单所属的用户信息。
+
+![](https://s1.ax1x.com/2020/08/06/agRNnS.png)
+
+**Tips1**：我们通常引用映射配置文件是:<mappers> <mapper resource="IUerMapper.xml"></mapper></mappers>。
+
+​			 还有一种写法，直接引入某包下所有接口。需保证：映射配置文件，与该接口同包同名：
+
+​					<mappers><package name="com.own.mapper"></mappers>
+
+### 2.一对多查询			 
+
+
 
 
 
