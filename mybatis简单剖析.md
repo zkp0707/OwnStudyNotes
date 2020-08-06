@@ -61,7 +61,7 @@
 
 ​	**解决思路**：使用代理模式生成Dao层接口的代理实现类。 
 
-![](https://github.com/zkp0707/OwnStudyNotes/tree/master/images/mybatisimages)
+![](https://github.com/zkp0707/OwnStudyNotes/tree/master/images/mybatisimages/动态代理.png)
 
 getMapper->使用JDK动态代理，为你传递过来的Dao接口生成代理对象proxyInstance->返回给userDao，所以userDao的类型就是proxy类型。->需明确：代理对象调用接口中的任意方法，都会执行invoke方法。
 
