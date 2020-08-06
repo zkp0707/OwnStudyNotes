@@ -18,8 +18,6 @@
 
 ​		2.**mapper.xml**:存放sql配置信息（sql语句、参数类型、返回值类型）
 
-
-
 **自定义持久层框架本身（工程）**：封装JDBC。
 
 1. **加载配置文件**：根据配置文件的路径，加载配置文件成字节输入流，存储在内存中
@@ -57,8 +55,6 @@
 
 ​	2.statementId存在硬编码问题。
 
-​	
-
 ​	**解决思路**：使用代理模式生成Dao层接口的代理实现类。 
 
 ![](https://s1.ax1x.com/2020/08/06/agN1Wd.png)
@@ -93,11 +89,24 @@ getMapper->使用JDK动态代理，为你传递过来的Dao接口生成代理对
 
 ## 5.mybatis复杂映射开发：
 
-### 1.一对一查询
+### 1.一对一查询：
 
 **一对一查询需求**：查询一个订单，与此同时查询出该订单所属的用户信息。
 
 ![](https://s1.ax1x.com/2020/08/06/agRNnS.png)
+
+```
+public void test1() throws IOException {
+        InputStream resourceAsStream = Resources.getResourceAsStream("sqlMapConfig.xml");
+        SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(resourceAsStream);
+        SqlSession sqlSession = sqlSessionFactory.openSession();
+        IOrderMapper mapper = sqlSession.getMapper(IOrderMapper.class);
+        List<Order> orderAndUser = mapper.findOrderAndUser();
+        for (Order order : orderAndUser) {
+            System.out.println(order);
+        }
+    }
+```
 
 **Tips1**：我们通常引用映射配置文件是:<mappers> <mapper resource="IUerMapper.xml"></mapper></mappers>。
 
@@ -105,9 +114,46 @@ getMapper->使用JDK动态代理，为你传递过来的Dao接口生成代理对
 
 ​					<mappers><package name="com.own.mapper"></mappers>
 
-### 2.一对多查询			 
+### 2.一对多查询：			 
 
+**一对多查询需求**：查询所有用户，与此同时查询出该用户具有的订单。
 
+```
+	<resultMap id="userMagtype="com.own.pojo.User">
+		<result property="id" column="uid"></result>
+		<result property="username" column="username"></result>
+		<collection property="orderList" ofType="com.own.pojo.0rder">
+			<result property="id" column="id"></result>
+			<result property="orderTime" column="orderTime"></result>
+			<result property="total" column="total"></result>
+		</collection>
+	</resultHap>
+	
+	<select id="findAll" resultMap="">
+		select * from user u left join orders o on u.id = o.uid
+	</select>
+```
+
+### 3.多对多查询：
+
+**多对多查询需求**：查询用户同时查询出该用户的所有角色。
+
+```
+	<resultMap id="userRoleMap" type="com.own.pojo.User">
+        <result property="id" column="userid"></result>
+        <result property="username" column="username"></result>
+        <collection property="roleList" ofType="com.lagou.pojo.Role">
+            <result property="id" column="roleid"></result>
+            <result property="roleName" column="roleName"></result>
+            <result property="roleDesc" column="roleDesc"></result>
+        </collection>
+    </resultMap>
+
+    <select id="findAllUserAndRole" resultMap="userRoleMap">
+        select * from user u left join sys_user_role ur on u.id = ur.userid
+										 left join sys_role r on r.id = ur.roleid
+    </select>
+```
 
 
 
