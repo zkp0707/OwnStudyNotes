@@ -133,15 +133,25 @@ public void test1() throws IOException {
 }
 ```
 
-**Tips**：①我们通常引用映射配置文件是:<mappers> <mapper resource="IUerMapper.xml"></mapper></mappers>。
+**Tips**：①我们通常引用映射配置文件是:
+
+```
+<mappers> <mapper resource="IUerMapper.xml"></mapper></mappers>
+```
 
 ​			  ②直接引入某包下所有接口。需保证：映射配置文件，与该接口同包同名：（扫描接口和与其同包同名的xml）
 
-​					<mappers><package name="com.own.mapper"></mappers>
+```
+<mappers><package name="com.own.mapper"></mappers>
+```
 
-​			  ③加载某接口，同时把接口中对应的sql注解与当前方法进行加载：（没有②好用）
+​			  ③加载某接口，同时把接口中对应的sql注解与当前方法进行加载：（没有②好用）			
 
-​					<mapper class="com.own.mapper.IUserMapper"></mapper>
+```
+<mapper class="com.own.mapper.IUserMapper"></mapper>
+```
+
+
 
 ### 2.一对多回顾：			 
 
@@ -426,7 +436,11 @@ private <E> List<E> queryFromDatabase(...) throws SQLException {
 </settings>
 ```
 
-**其次**：①配置开发：在UserMapper.xml中开启缓存：<cache></cache>
+**其次**：①配置开发：在UserMapper.xml中开启缓存：
+
+```
+<cache></cache>
+```
 
 ​		    ②注解开发：在IUserMapper.java中开启缓存：@CacheNamespace(implementation=PerpetualCache.class)
 
