@@ -585,7 +585,7 @@ public Object getObject(final Object key) {//向redis取值
 
 **mybatis四大核心对象**：
 
-```
+```java
 						  ->ParameterHandler
 Executor->StatementHandler
 						  ->ResultSetHandler
