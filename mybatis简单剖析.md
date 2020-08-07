@@ -72,9 +72,8 @@ public void test1() throws IOException{
     Inputstream resourceAsstream = Resources.getResourceAsStream("sqlMapConfig.xml"
    	//2.解析了配'置文件，并创建了sqLsessionFactory工厂
     sqlsessionFactory sqlsessionFactory = new SqlSessionFactoryBuilder().build(resourceAsStream);
-    //3.生产sqLlsession
-    sqlSession sqlSession = sqlSessionFactory.openSession();//默认开启一个事务，但是该事务不会自动提交
-   															//在进行增删改操作时，要手动提交事务
+    //3.生产sqLlsession。默认开启一个事务，但是该事务不会自动提交,在进行增删改操作时，要手动提交事务
+    sqlSession sqlSession = sqlSessionFactory.openSession();
    	//4.sqlSession调用方法，查询所有selectList查询单个: selectone添加: insert修改:update删除: delete    
     List<User> users = sqlsession.selectList( s: "user.findAl1");
     for(user user : users) {
@@ -113,9 +112,9 @@ public void test5() throws IOException {
 
 ![](https://s1.ax1x.com/2020/08/06/agNudO.png)
 
-## 5.mybatis复杂映射开发：
+## 5.mybatis映射开发：
 
-### 1.一对一查询：
+### 1.一对一回顾：
 
 **一对一查询需求**：查询一个订单，与此同时查询出该订单所属的用户信息。
 
@@ -134,51 +133,147 @@ public void test1() throws IOException {
 }
 ```
 
-**Tips1**：我们通常引用映射配置文件是:<mappers> <mapper resource="IUerMapper.xml"></mapper></mappers>。
+**Tips1**：①我们通常引用映射配置文件是:<mappers> <mapper resource="IUerMapper.xml"></mapper></mappers>。
 
-​			 还有一种写法，直接引入某包下所有接口。需保证：映射配置文件，与该接口同包同名：
+​			  ②直接引入某包下所有接口。需保证：映射配置文件，与该接口同包同名：（扫描接口和与其同包同名的xml）
 
 ​					<mappers><package name="com.own.mapper"></mappers>
 
-### 2.一对多查询：			 
+​			  ③加载某接口，同时把接口中对应的sql注解与当前方法进行加载：（没有②好用）
+
+​					<mapper class="com.own.mapper.IUserMapper"></mapper>
+
+### 2.一对多回顾：			 
 
 **一对多查询需求**：查询所有用户，与此同时查询出该用户具有的订单。
 
 ```
-	<resultMap id="userMagtype="com.own.pojo.User">
-		<result property="id" column="uid"></result>
-		<result property="username" column="username"></result>
-		<collection property="orderList" ofType="com.own.pojo.0rder">
-			<result property="id" column="id"></result>
-			<result property="orderTime" column="orderTime"></result>
-			<result property="total" column="total"></result>
-		</collection>
-	</resultHap>
+<resultMap id="userMagtype="com.own.pojo.User">
+    <result property="id" column="uid"></result>
+    <result property="username" column="username"></result>
+    <collection property="orderList" ofType="com.own.pojo.0rder">
+        <result property="id" column="id"></result>
+        <result property="orderTime" column="orderTime"></result>
+        <result property="total" column="total"></result>
+    </collection>
+</resultHap>
 	
-	<select id="findAll" resultMap="">
-		select * from user u left join orders o on u.id = o.uid
-	</select>
+<select id="findAll" resultMap="userMap">
+    select * from user u left join orders o on u.id = o.uid
+</select>
 ```
 
-### 3.多对多查询：
+### 3.多对多回顾：
 
 **多对多查询需求**：查询用户同时查询出该用户的所有角色。
 
 ```
-	<resultMap id="userRoleMap" type="com.own.pojo.User">
-        <result property="id" column="userid"></result>
-        <result property="username" column="username"></result>
-        <collection property="roleList" ofType="com.lagou.pojo.Role">
-            <result property="id" column="roleid"></result>
-            <result property="roleName" column="roleName"></result>
-            <result property="roleDesc" column="roleDesc"></result>
-        </collection>
-    </resultMap>
+<resultMap id="userRoleMap" type="com.own.pojo.User">
+    <result property="id" column="userid"></result>
+    <result property="username" column="username"></result>
+	<collection property="roleList" ofType="com.own.pojo.Role">
+        <result property="id" column="roleid"></result>
+        <result property="roleName" column="roleName"></result>
+        <result property="roleDesc" column="roleDesc"></result>
+	</collection>
+</resultMap>
 
-    <select id="findAllUserAndRole" resultMap="userRoleMap">
-        select * from user u left join sys_user_role ur on u.id = ur.userid
-										 left join sys_role r on r.id = ur.roleid
-    </select>
+<select id="findAllUserAndRole" resultMap="userRoleMap">
+	select * from user u left join sys_user_role ur on u.id = ur.userid
+								left join sys_role r on r.id = ur.roleid
+</select>
+```
+
+##  6.mybatis注解开发：
+
+### 1.一对一回顾：
+
+```
+@Results({
+    @Result(property = "id",column = "id"),
+    @Result(property = "orderTime",column = "orderTime"),
+    @Result(property = "total",column = "total"),
+    @Result(property = "user",column = "uid",javaType = User.class,
+           one=@One(select = "com.own.mapper.IUserMapper.findUserById"))
+})//sql先执行，然后按照@Results配置关系封装，然后根据@One定位到第二段sql语句。
+//colume="uid"是我们要传递的参数
+@Select("select * from orders")
+public List<Order> findOrderAndUser();	
+	
+//根据id查询用户，接受到的参数即是传递的uid的值。把查询结果封装成User对象。
+//封装好的User对象，返回到 property="user"。最终封装完成List集合。
+@Select({"select * from user where id = #{id}"})
+public User findUserById(Integer id);
+```
+
+```
+private IUserMapper userMapper;
+private IOrderMapper orderMapper;
+
+@Before
+public void befor() throws IOException {
+    InputStream resourceAsStream = Resources.getResourceAsStream("sqlMapConfig.xml");
+    SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(resourceAsStream);
+    SqlSession sqlSession = sqlSessionFactory.openSession(true);
+    userMapper = sqlSession.getMapper(IUserMapper.class);
+    orderMapper = sqlSession.getMapper(IOrderMapper.class);
+}
+    
+@Test
+public void oneToOne(){
+    List<Order> orderAndUser = orderMapper.findOrderAndUser();
+    for (Order order : orderAndUser) {
+        System.out.println(order);
+    }
+}
+```
+
+### 2.一对多回顾：
+
+**注意**：此时我们并不采用左外连接，而是通过写两条sql语句来完成。
+
+```
+select * from user;
+select * from orders where uid=查询用户id;
+```
+
+```
+//查询所有用户、同时查询每个用户关联的订单信息
+@Select("select * from user")
+@Results({
+    @Result(property = "id",column = "id"),
+    @Result(property = "username",column = "username"),
+    @Result(property = "orderList",column = "id",javaType = List.class,
+    	many=@Many(select = "com.lagou.mapper.IOrderMapper.findOrderByUid"))
+})
+public List<User> findAll();
+    
+@Select("select * from orders where uid = #{uid}")
+public List<Order> findOrderByUid(Integer uid);
+```
+
+### 3.多对多回顾：
+
+同样：此时我们并不采用左外连接，而是通过写两条sql语句来完成。
+
+```
+select * from user;
+select * from role r,user_role ur where r.id=ur.role_id and ur.uer_id=用户的id
+```
+
+```
+//查询所有用户、同时查询每个用户关联的角色信息
+@Select("select * from user")
+@Results({
+    @Result(property = "id",column = "id"),
+    @Result(property = "username",column = "username"),
+    @Result(property = "roleList",column = "id",javaType = List.class,
+   	 many = @Many(select = "com.own.mapper.IRoleMapper.findRoleByUid"))
+})
+public List<User> findAllUserAndRole();
+    
+@Select("select * from sys_role r,sys_user_role ur where r.id = ur.roleid and ur.userid = #{uid}")
+public List<Role> findRoleByUid(Integer uid);
 ```
 
 
