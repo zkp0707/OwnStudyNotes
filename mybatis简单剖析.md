@@ -112,13 +112,46 @@ public void test5() throws IOException {
 
 ![](https://s1.ax1x.com/2020/08/06/agNudO.png)
 
+
+
 ## 5.mybatis映射开发：
 
 ### 1.一对一回顾：
 
 **一对一查询需求**：查询一个订单，与此同时查询出该订单所属的用户信息。
 
-![](https://s1.ax1x.com/2020/08/06/agRNnS.png)
+```
+public class Order{
+	private Integer id;
+	private String orderTime;
+	private Double total;
+	
+	//表明该订单属于哪个用户；
+	private User user;   ====> publicc class User{							
+}									private Integer id;
+									private String username;
+							   }
+```
+
+```
+<resultMap id="orserMap" type="com.own.pojo.Order">
+	<result property="id" column="id"></result>
+	<result property="orderTime" column="orderTime"></result>
+	<result property="total" column="total"></result>
+	
+<association property="user" javaType="com.own.pojo.User" >
+	<result property="id" column="uid" > </result>
+	<result property="username" column="username" :> </result>
+</association>
+/resultMap>
+
+<!—-resultMap:手动来配置实体属性与表字段的映射关系-->
+<select id="findOrderAndUser" resultMap="orderHap">
+	select * from orders o,user u where o.uid = u.id
+</select>
+```
+
+
 
 ```
 public void test1() throws IOException {
@@ -321,8 +354,6 @@ public void firstLevelCache(){
     System.out.println(user1==user2);//true
 }
 ```
-
-
 
 点进sqlSession，打开structure找到clearCache()接口。
 
@@ -600,6 +631,130 @@ ResultSetHandler：结果集处理器：处理返回结果集。(handleResultSet
 
 换句话说，当前这四大组件，返回的时候，返回的并不是原生的对象，而是经过代理后的代理对象。
 
+**源码分析**：进入Plugin.java，作为InvocationHandle实现类，必会重写invoke方法。
+
+
+
+
+
+## 8.mybatis架构原理和源码剖析：
+
+### 1.mybatis架构设计：
+
+```
+接口层：Ⅰ、数据增加接口Ⅱ、数据删除接口Ⅲ、数据查询接口Ⅳ数据修改接口Ⅴ、配置信息维护接口
+	接口调用方式：基于StatementID（ⅠⅡⅢⅣ），基于Mapper接口。
+数据处理层：
+	参数映射：Ⅰ、参数映射配置 Ⅱ、参数映射解析 Ⅲ参数类型解析。（ParameterHandler）。
+	SQL解析：Ⅰ、SQL语句配置 Ⅱ、SQL语句解析 Ⅲ、SQL语句动态生成。（SqlSource）。
+	SQL执行：Ⅰ、SimpleExecutor Ⅱ、BatchExecutor ⅢReuseExecutor。（Executor）。
+	结果处理和映射：Ⅰ、结果映射配置 Ⅱ、结果类型抓换 Ⅲ、结果类型转换。（ResultSetHandler）。
+框架支撑层：
+	SQL语句配置方式：Ⅰ、基于XML配置 Ⅱ、基于注解配置（事务管理、连接池管理、缓存机制）。
+```
+
+**接口层**：交互方式->①传统API，②mapper代理。接口层发送了调用请求，就会调用数据处理层来完成数据处理。开发人员并不直接接触数据处理层。
+
+​	①传统API：调用方法时，就可以用sqlSession.selectList/selectOne/insert/update/delete()。在这些方法被调用的时候，传递statementId，基于statementId定位sql语句从而执行。
+
+​	②mapper代理：调用方法时，就可以用sqlSession.getMapper()。拿到某个接口的代理对象，再由代理对象进行方法的调用。
+
+### **2.mybatis层次结构**：
+
+```
+SqlSession:作为顶层接口，会话访问，完成增删改查功能。
+ |Executor:执行器，核心，负责SQL动态语句的生成和查询缓存的维护。
+  |StatementHandler:处理JDBC的Statement交互，包括对Statement设置参数，以及对JDBC返回的resultSet结果集转换成List。
+   |ParameterHandler:根据传递的参数值，对Statement对象设置参数。
+   |ResultSetHandler：负责将resultSet集合转换成List。
+   	|TypeHandler<T>:负责jdbcType与javaType之间的数据转换；
+   						Ⅰ、对Statement对象设置特定参数；
+   						Ⅱ、对Statement返回结果集resultSet取出特定的列。
+JDBC：
+	ResultSet:返回的结果集。
+	 |PreparedStatement、SimpleStatement、CallableStatement、
+
+BoundSql：表示动态生成的SQL语句以及相应的参数信息。
+ |MappedStatement：维护了一条<select|update|delete|insert>节点的封装。
+  |SqlSource
+  |ResultMap
+```
+
+### 3.传统方式源码剖析：
+
+**先写个测试类**：
+
+```
+public void test1() throws IOException {
+    // 1. 读取配置文件，读成字节输入流，注意：现在还没解析
+    InputStream resourceAsStream = Resources.getResourceAsStream("sqlMapConfig.xml");
+
+    // 2. 解析配置文件，封装Configuration对象   创建DefaultSqlSessionFactory对象
+    SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(resourceAsStream);
+
+    // 3. 生产了DefaultSqlsession实例对象   设置了事务不自动提交  完成了executor对象的创建
+    SqlSession sqlSession = sqlSessionFactory.openSession();
+
+    // 4.(1)根据statementid来从Configuration中map集合中获取到了指定的MappedStatement对象
+    //	 (2)将查询任务委派了executor执行器
+    List<Object> objects = sqlSession.selectList("namespace.id");
+	
+    // 5.释放资源
+    sqlSession.close();
+}
+```
+
+**先进入getResourceAsStream()看看**：
+
+```
+//(Resource.java)调用了重载方法
+public static InputStream getResourceAsStream(String resource) throws IOException {
+	return getResourceAsStream(null, resource);
+}
+
+//借助类加载器，根据当前配置文件的路径，把它加载成字节输入流，进行返回。
+public static InputStream getResourceAsStream(ClassLoader loader, String resource) throws IOException {
+    InputStream in = classLoaderWrapper.getResourceAsStream(resource, loader);
+    if (in == null) {
+        throw new IOException("Could not find resource " + resource);
+    }
+    return in;
+}
+```
+
+再进build()看看：
+
+```
+//在自定义持久层框架中的build()方法完成两件事：1、解析配置文件，封装成config对象。2、创建sqlSessionFactory实现类对象。
+// 1.我们最初调用的build
+public SqlSessionFactory build(InputStream inputStream) {
+    //调用了重载方法
+    return build(inputStream, null, null);
+}
+
+// 2.调用的重载方法
+    public SqlSessionFactory build(InputStream inputStream, String environment, Properties properties) {
+        try {
+            // 创建 XMLConfigBuilder, XMLConfigBuilder是专门解析mybatis的配置文件的类
+            XMLConfigBuilder parser = new XMLConfigBuilder(inputStream, environment, properties);
+            // 执行 XML 解析
+            // 创建 DefaultSqlSessionFactory 对象
+            return build(parser.parse());
+        } catch (Exception e) {
+            throw ExceptionFactory.wrapException("Error building SqlSession.", e);
+        } finally {
+            ErrorContext.instance().reset();
+            try {
+                inputStream.close();
+            } catch (IOException e) {
+                // Intentionally ignore. Prefer previous error.
+            }
+        }
+    }
+```
+
+
+
 ## **Note：**
 
 **resultType**:声明实体类的全路径，才能通过**反射**获取实体类属性，才能完成字段值和属性值的自动映射封装。 
@@ -607,4 +762,20 @@ ResultSetHandler：结果集处理器：处理返回结果集。(handleResultSet
 **StatementId**：是namespace.id。
 
 **attributeValue**:获取对象信息	=>	**getTextTrim**：获得除去空格的文本。
+
+**通用mapper**（实体类注解设置）：
+
+@Table(name="user"):表示当前实体要和哪一张表进行映射。
+
+@Id:对应的是组件id。@GeneratedValue(strategy=GenerationType.IDENTITY(支持主键自增长)/SEQUENCE(使用序列的值生主键/TABLE(生成一张表，从表内取值生成主键)/AUTO(根据底层数据库自动选择适合的主键生成策略)):设置主键生成策略。@column:若当前实体属性和数据库中不一致，可使用这个配置映射关系。
+
+```
+//通用mapper条件查询，example方法
+Example example = new Example(User.class);
+example.createCriteria().andEqualTo("id",1);
+List<User> users = mapper.selectByExample(example);
+	for (User user2 : users) {
+	System.out.println(user2);
+	}
+```
 
