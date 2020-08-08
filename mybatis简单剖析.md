@@ -369,7 +369,7 @@ private Map<Object, Object> cache = new HashMap<Object, Object>();
 
 @Override
 public void clear() {
-cache.clear();
+	cache.clear();
 }
 
 ```
@@ -682,7 +682,7 @@ BoundSql：表示动态生成的SQL语句以及相应的参数信息。
 
 ### 3.传统方式源码剖析：
 
-**先写个测试类**：
+**先写个测试类方法**：
 
 ```java
 public void test1() throws IOException {
@@ -704,6 +704,8 @@ public void test1() throws IOException {
 }
 ```
 
+#### 1.mybatis初始化过程：
+
 **先进入getResourceAsStream()看看**：
 
 ```java
@@ -722,7 +724,7 @@ public static InputStream getResourceAsStream(ClassLoader loader, String resourc
 }
 ```
 
-再进build()看看：
+**再进build()看看**：
 
 ```java
 //在自定义持久层框架中的build()方法完成两件事：1、解析配置文件，封装成config对象。2、创建sqlSessionFactory实现类对象。
@@ -792,7 +794,41 @@ private void propertiesElement(XNode context) throws Exception {
 
 //在当前parseConfiguration()执行之后，已经完成了对配置文件的解析，并且把解析出来的内容，在这些方法执行的过程中，封装到mybatis的核心配置类onfiguration对象中。往上翻，找到configuration对象。在创建XMLConfigBuilder对象时，也把Configuration对象进行了实例化，进去看看(configration.java)。
 
-//作为mybatis核心配置类，里面的属性很多，挑mappedStatements来看看
+//作为mybatis核心配置类，里面的属性很多，挑MappedStatements来看看。
+
+//  MappedStatement 映射
+// KEY：`${namespace}.${id}`
+protected final Map<String, MappedStatement> mappedStatements = new StrictMap<>("Mapped Statements collection");
+    
+//在XMLConfiguration.java中封装完成configuration对象后， 会作为参数执行build方法:return build(parser.parse());
+//SqlSessionFactoryBuilder.java
+//接受到你封装好的configuration对象，并根据此对象来构建一个DefaultSqlSessionFactory，它就是SqlSession的实现类。
+public SqlSessionFactory build(Configuration config) {
+   return new DefaultSqlSessionFactory(config); //构建者设计模式
+}
+
+```
+
+### 2.mybatis执行sql流程：
+
+**先简单介绍SqlSeesion**：
+
+```java
+SqlSession是一个接口，有两个实现类：DefaultSqlSession(默认)和SqlSessionManager(弃用)。
+SqlSession是mybatis中用于和数据库交互的顶层类，通常和ThreadLocal绑定，一个会话使用一个SqlSession(线程不安全)，使用完后需要close。
+	public class DefaultSqlSession implements SqlSession {
+		private final Configuration configuration;//与初始化时相同。
+		private final Executor executor;//执行器。
+在SqlSession调用方法执行的过程中，会把这个任务委派给Executor。Executor也是一个接口，有三个常用实现类:
+Ⅰ、BatchExecutor (重用语句并执行批量更新)
+Ⅱ、ReuseExecutor (重用预处理语句prepared statements)
+Ⅲ、SimpleExecutor(普通执行器，默认)		
+```
+
+**在测试方法的第三步时，在openSession()如何生产sqlSession对象呢？进去看看(DefaultSqlSessionFactory.java)**。
+
+```
+
 ```
 
 
