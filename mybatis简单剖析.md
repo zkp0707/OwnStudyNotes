@@ -65,7 +65,7 @@ getMapper->使用JDK动态代理，为你传递过来的Dao接口生成代理对
 
 **1.传统开发方式**：
 
-```
+```java
 @Test
 public void test1() throws IOException{
     //1.Resources工具类，配置文件的加载，把配置文件加载成字节输入流
@@ -724,7 +724,7 @@ public static InputStream getResourceAsStream(ClassLoader loader, String resourc
 
 再进build()看看：
 
-```
+```java
 //在自定义持久层框架中的build()方法完成两件事：1、解析配置文件，封装成config对象。2、创建sqlSessionFactory实现类对象。
 // 1.我们最初调用的build
 public SqlSessionFactory build(InputStream inputStream) {
@@ -766,7 +766,7 @@ public SqlSessionFactory build(InputStream inputStream, String environment, Prop
         return configuration;
     }
 
-//解析每一个标签。具体解析过程以properties为例，进去看看。    
+//解析每一个标签。具体解析过程以properties为例，进去看看(XMLConfiguration.java)。
 private void parseConfiguration(XNode root) {
 	try {
 		//issue #117 read properties first
@@ -776,7 +776,7 @@ private void parseConfiguration(XNode root) {
 		Properties settings = settingsAsProperties(root.evalNode("settings"));
 		... ...
 		// 解析 <mappers /> 标签
-		//在加载核心配置文件的时候，根据mappers，也就是映射配置文件的路径，也对映射配置文件进行了加载。 把映射配置文件中每一个标签select/insert/update			等都会封装成mapStatement对象，再把这个mapStatement对象最终封装到configuration中。
+		//在加载核心配置文件的时候，根据mappers，也就是映射配置文件的路径，也对映射配置文件进行了加载。 把映射配置文件中每一个标签select/insert/update等都会封装成mapStatement对象，再把这个mapStatement对象最终封装到configuration中。
         mapperElement(root.evalNode("mappers"));
 }
 
@@ -790,7 +790,9 @@ private void propertiesElement(XNode context) throws Exception {
         ... ...
 }
 
-//在当前parseConfiguration()执行之后，已经完成了对配置文件的解析，并且把解析出来的内容，在这些方法执行的过程中，封装到mybatis的核心配置类onfiguration	对象中。
+//在当前parseConfiguration()执行之后，已经完成了对配置文件的解析，并且把解析出来的内容，在这些方法执行的过程中，封装到mybatis的核心配置类onfiguration对象中。往上翻，找到configuration对象。在创建XMLConfigBuilder对象时，也把Configuration对象进行了实例化，进去看看(configration.java)。
+
+//作为mybatis核心配置类，里面的属性很多，挑mappedStatements来看看
 ```
 
 
