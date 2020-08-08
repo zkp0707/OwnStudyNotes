@@ -733,24 +733,64 @@ public SqlSessionFactory build(InputStream inputStream) {
 }
 
 // 2.调用的重载方法
-    public SqlSessionFactory build(InputStream inputStream, String environment, Properties properties) {
+public SqlSessionFactory build(InputStream inputStream, String environment, Properties properties) {
+	try {
+        // 创建 XMLConfigBuilder, XMLConfigBuilder是专门解析mybatis的配置文件的类
+        XMLConfigBuilder parser = new XMLConfigBuilder(inputStream, environment, properties);
+        // 执行 XML 解析
+        // 创建 DefaultSqlSessionFactory 对象
+        return build(parser.parse());// 怎么解析的呢，进去看看
+    } catch (Exception e) {
+        throw ExceptionFactory.wrapException("Error building SqlSession.", e);
+    } finally {
+        ErrorContext.instance().reset();
         try {
-            // 创建 XMLConfigBuilder, XMLConfigBuilder是专门解析mybatis的配置文件的类
-            XMLConfigBuilder parser = new XMLConfigBuilder(inputStream, environment, properties);
-            // 执行 XML 解析
-            // 创建 DefaultSqlSessionFactory 对象
-            return build(parser.parse());
-        } catch (Exception e) {
-            throw ExceptionFactory.wrapException("Error building SqlSession.", e);
-        } finally {
-            ErrorContext.instance().reset();
-            try {
-                inputStream.close();
-            } catch (IOException e) {
-                // Intentionally ignore. Prefer previous error.
-            }
+            inputStream.close();
+        } catch (IOException e) {
+            // Intentionally ignore. Prefer previous error.
         }
     }
+}
+
+    public Configuration parse() {
+        // 若已解析，抛出 BuilderException 异常
+        if (parsed) {//判断对当前配置文件有没有解析过，默认值是false
+            throw new BuilderException("Each XMLConfigBuilder can only be used once.");
+        }
+        // 标记已解析
+        parsed = true;
+        //parser是XPathParser解析器对象，读取节点内数据，<configuration>是MyBatis配置文件中的顶层标签
+        //读取到数据后当作参数来去执行parseConfiguration方法，进去看看。
+        // 解析 XML configuration 节点
+        parseConfiguration(parser.evalNode("/configuration"));
+        return configuration;
+    }
+
+//解析每一个标签。具体解析过程以properties为例，进去看看。    
+private void parseConfiguration(XNode root) {
+	try {
+		//issue #117 read properties first
+		// 解析 <properties /> 标签
+		propertiesElement(root.evalNode("properties"));
+		// 解析 <settings /> 标签
+		Properties settings = settingsAsProperties(root.evalNode("settings"));
+		... ...
+		// 解析 <mappers /> 标签
+		//在加载核心配置文件的时候，根据mappers，也就是映射配置文件的路径，也对映射配置文件进行了加载。 把映射配置文件中每一个标签select/insert/update			等都会封装成mapStatement对象，再把这个mapStatement对象最终封装到configuration中。
+        mapperElement(root.evalNode("mappers"));
+}
+
+private void propertiesElement(XNode context) throws Exception {
+	if (context != null) {
+        // 读取子标签们，为 Properties 对象
+        Properties defaults = context.getChildrenAsProperties();
+        // 读取 resource 和 url 属性
+        String resource = context.getStringAttribute("resource");
+        String url = context.getStringAttribute("url");
+        ... ...
+}
+
+//在当前parseConfiguration()执行之后，已经完成了对配置文件的解析，并且把解析出来的内容，在这些方法执行的过程中，封装到mybatis的核心配置类onfiguration	对象中。
 ```
 
 
