@@ -86,7 +86,7 @@ public void test1() throws IOException{
 
 **2.代理开发方式（主流）**：
 
-```
+```java
 @Test
 public void test5() throws IOException {
     Inputstream resourceAsstream = Resources.getResourceAsStream("sqlMapConfig.xml");
@@ -120,7 +120,7 @@ public void test5() throws IOException {
 
 **一对一查询需求**：查询一个订单，与此同时查询出该订单所属的用户信息。
 
-```
+```java
 public class Order{
 	private Integer id;
 	private String orderTime;
@@ -133,7 +133,7 @@ public class Order{
 							   }
 ```
 
-```
+```java
 <resultMap id="orserMap" type="com.own.pojo.Order">
 	<result property="id" column="id"></result>
 	<result property="orderTime" column="orderTime"></result>
@@ -153,7 +153,7 @@ public class Order{
 
 
 
-```
+```java
 public void test1() throws IOException {
     InputStream resourceAsStream = Resources.getResourceAsStream("sqlMapConfig.xml");
     SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(resourceAsStream);
@@ -168,19 +168,19 @@ public void test1() throws IOException {
 
 **Tips**：①我们通常引用映射配置文件是:
 
-```
+```java
 <mappers> <mapper resource="IUerMapper.xml"></mapper></mappers>
 ```
 
 ​			  ②直接引入某包下所有接口。需保证：映射配置文件，与该接口同包同名：（扫描接口和与其同包同名的xml）
 
-```
+```java
 <mappers><package name="com.own.mapper"></mappers>
 ```
 
 ​			  ③加载某接口，同时把接口中对应的sql注解与当前方法进行加载：（没有②好用）			
 
-```
+```java
 <mapper class="com.own.mapper.IUserMapper"></mapper>
 ```
 
@@ -190,7 +190,7 @@ public void test1() throws IOException {
 
 **一对多查询需求**：查询所有用户，与此同时查询出该用户具有的订单。
 
-```
+```java
 <resultMap id="userMagtype="com.own.pojo.User">
     <result property="id" column="uid"></result>
     <result property="username" column="username"></result>
@@ -210,7 +210,7 @@ public void test1() throws IOException {
 
 **多对多查询需求**：查询用户同时查询出该用户的所有角色。
 
-```
+```java
 <resultMap id="userRoleMap" type="com.own.pojo.User">
     <result property="id" column="userid"></result>
     <result property="username" column="username"></result>
@@ -231,7 +231,7 @@ public void test1() throws IOException {
 
 ### 1.一对一回顾：
 
-```
+```java
 @Results({
     @Result(property = "id",column = "id"),
     @Result(property = "orderTime",column = "orderTime"),
@@ -249,7 +249,7 @@ public List<Order> findOrderAndUser();
 public User findUserById(Integer id);
 ```
 
-```
+```java
 private IUserMapper userMapper;
 private IOrderMapper orderMapper;
 
@@ -275,12 +275,12 @@ public void oneToOne(){
 
 **注意**：此时我们并不采用左外连接，而是通过写两条sql语句来完成。
 
-```
+```java
 select * from user;
 select * from orders where uid=查询用户id;
 ```
 
-```
+```java
 //查询所有用户、同时查询每个用户关联的订单信息
 @Select("select * from user")
 @Results({
@@ -299,12 +299,12 @@ public List<Order> findOrderByUid(Integer uid);
 
 同样：此时我们并不采用左外连接，而是通过写两条sql语句来完成。
 
-```
+```java
 select * from user;
 select * from role r,user_role ur where r.id=ur.role_id and ur.uer_id=用户的id
 ```
 
-```
+```java
 //查询所有用户、同时查询每个用户关联的角色信息
 @Select("select * from user")
 @Results({
@@ -330,7 +330,7 @@ public List<Role> findRoleByUid(Integer uid);
 
 **sqlSession一级缓存(HashMap​)**->key:**cacheKey**(stetementid,params,boundSql,rowBounds)/value:user对象。
 
-```
+```java
 @Test
 public void firstLevelCache(){
     // 第一次查询id为1的用户
@@ -357,14 +357,14 @@ public void firstLevelCache(){
 
 点进sqlSession，打开structure找到clearCache()接口。
 
-```
+```java
 clearCahche-->claearCache-->clearLocalCache-->clearLocalCache-->clear||结束
 SqlSession-->DefaultSqlSession-->Executor-->BaseExecutor-->PerpetualCache
 ```
 
 在PerpetualCache.java中不难发现：
 
-```
+```java
 private Map<Object, Object> cache = new HashMap<Object, Object>();
 
 @Override
@@ -376,7 +376,7 @@ cache.clear();
 
 **cache何时被创建呢**？我们回退到Executor.java——在自定义mybatis中，我们知道Executor就是一个执行器，它的作用就是来执行sql，执行JDBC——我们找到createCacheKey—>进入BaseExecutor.java。
 
-```
+```java
 @Override
 //RowBounds:分页对象。BoundSql：底层要执行的sql语句
 public CacheKey createCacheKey(MappedStatement ms, Object parameterObject, RowBounds rowBounds, BoundSql boundSql) {
@@ -408,7 +408,7 @@ public void update(Object object) {
 
 **createCacheKey方法何时被调用的呢**？我userMapper.findUserById();第一次发起查询的时候，生成cacheKey。然后会使用cacheKey以及查询出来的结果放到一级缓存中。所以，我们需要寻找底层执行sql方法。不管usesMapper调用什么方法，底层最终执行的都是Executor执行器中的query方法。
 
-```
+```java
 public <E> List<E> query(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler) throws SQLException {
     BoundSql boundSql = ms.getBoundSql(parameter);//要执行的sql在boundSql封装着
     CacheKey key = createCacheKey(ms, parameter, rowBounds, boundSql);//就是要存放到一级缓存中的key值
@@ -460,7 +460,7 @@ private <E> List<E> queryFromDatabase(...) throws SQLException {
 
 **注意**：settings需要配置在properties标签下。
 
-```
+```java
 <!--开启二级缓存  -->
 <settings>
 	<setting name="cacheEnabled" value="true"/>
@@ -469,13 +469,13 @@ private <E> List<E> queryFromDatabase(...) throws SQLException {
 
 **其次**：①配置开发：在UserMapper.xml中开启缓存：
 
-```
+```java
 <cache></cache>
 ```
 
 ​		    ②注解开发：在IUserMapper.java中开启缓存：@CacheNamespace(implementation=PerpetualCache.class)
 
-```
+```java
 @Test//sqlSession1,sqlSession2
 	public void SecondLevelCache(){
         SqlSession sqlSession1 = sqlSessionFactory.openSession();
@@ -499,7 +499,7 @@ private <E> List<E> queryFromDatabase(...) throws SQLException {
 
 **注意**：开启了二级缓存后，还需要将要缓存的pojo实现Serializable接口，为了将缓存数据取出执行反序列化操作，因为二级缓存数据存储介质多种多样，不一定只存在内存中，有可能存在硬盘中，如果我们要再取这个缓存的话，就需要反序列化了。所以mybatis中的pojo都去实现Serializable接口。
 
-```
+```java
  @Test//sqlSession3
     public void SecondLevelCache(){
 		... ...
@@ -519,7 +519,7 @@ private <E> List<E> queryFromDatabase(...) throws SQLException {
 
 **补充**：①还可以配置useCache来设置是否禁用二级缓存，默认为true。
 
-```
+```java
 xml:
 <select id="selectUserByUserId" useCache="false" resultType="com.own.pojo.User" parameterType="int">
 	select * from user where id=#{id}
@@ -534,7 +534,7 @@ public User findUserById(Integer id);
 
 mybatis二级缓存是基于PerpetualCache(mybatis默认实现缓存功能的类)实现的，自定义缓存类必须实现Cache接口。我们进入：PerpetualCache
 
-```
+```java
 External Libraries->Maven:org.mybatis:mybatis:3.4.5->org->apache->ibatis->cache
 
 //mybatis二级缓存底层仍然是为HashMap存储
@@ -548,14 +548,14 @@ private Map<Object, Object> cache = new HashMap<Object, Object>();
 
 ​	mybatis提供了一个cache接口，如果要实现自己的缓存逻辑，实现cache接口开发即可。mybatis本身默认实现了一个，但是这个缓存的实现无法实现分布式缓存，所以我们要自己来实现。redis分布式缓存就可以，mybatis提供了一个针对cache接口的redis实现类,该类存在mybatis-redis包。
 
-```
+```java
 在IUserMapper.java中开启缓存。
 @CacheNamespace(implementation=RedisCache.class)
 ```
 
 #### RedisCache源码分析：
 
-```
+```java
 //RedisCache在mybatis初始化的时候，由MyBatis的CacheBuilder创建，在创建的过程中有参构造就要执行。
 public final class RedisCache implements Cache {
     private final ReadWriteLock readWriteLock = new DummyReadWriteLock();
@@ -590,7 +590,7 @@ final class RedisConfigurationBuilder {
 
 继续RedisCache.class往下看：
 
-```
+```java
 public void putObject(final Object key, final Object value) {//向redis存值
 	//模版方法	
     this.execute(new RedisCallback() {
@@ -641,7 +641,7 @@ ResultSetHandler：结果集处理器：处理返回结果集。(handleResultSet
 
 ### 1.mybatis架构设计：
 
-```
+```java
 接口层：Ⅰ、数据增加接口Ⅱ、数据删除接口Ⅲ、数据查询接口Ⅳ数据修改接口Ⅴ、配置信息维护接口
 	接口调用方式：基于StatementID（ⅠⅡⅢⅣ），基于Mapper接口。
 数据处理层：
@@ -661,7 +661,7 @@ ResultSetHandler：结果集处理器：处理返回结果集。(handleResultSet
 
 ### **2.mybatis层次结构**：
 
-```
+```java
 SqlSession:作为顶层接口，会话访问，完成增删改查功能。
  |Executor:执行器，核心，负责SQL动态语句的生成和查询缓存的维护。
   |StatementHandler:处理JDBC的Statement交互，包括对Statement设置参数，以及对JDBC返回的resultSet结果集转换成List。
@@ -684,7 +684,7 @@ BoundSql：表示动态生成的SQL语句以及相应的参数信息。
 
 **先写个测试类**：
 
-```
+```java
 public void test1() throws IOException {
     // 1. 读取配置文件，读成字节输入流，注意：现在还没解析
     InputStream resourceAsStream = Resources.getResourceAsStream("sqlMapConfig.xml");
@@ -706,7 +706,7 @@ public void test1() throws IOException {
 
 **先进入getResourceAsStream()看看**：
 
-```
+```java
 //(Resource.java)调用了重载方法
 public static InputStream getResourceAsStream(String resource) throws IOException {
 	return getResourceAsStream(null, resource);
@@ -811,7 +811,7 @@ private void propertiesElement(XNode context) throws Exception {
 
 @Id:对应的是组件id。@GeneratedValue(strategy=GenerationType.IDENTITY(支持主键自增长)/SEQUENCE(使用序列的值生主键/TABLE(生成一张表，从表内取值生成主键)/AUTO(根据底层数据库自动选择适合的主键生成策略)):设置主键生成策略。@column:若当前实体属性和数据库中不一致，可使用这个配置映射关系。
 
-```
+```java
 //通用mapper条件查询，example方法
 Example example = new Example(User.class);
 example.createCriteria().andEqualTo("id",1);
