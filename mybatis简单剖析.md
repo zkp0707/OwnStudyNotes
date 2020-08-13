@@ -168,19 +168,19 @@ public void test1() throws IOException {
 
 **Tips**：①我们通常引用映射配置文件是:
 
-```java
+```xml
 <mappers> <mapper resource="IUerMapper.xml"></mapper></mappers>
 ```
 
 ​			  ②直接引入某包下所有接口。需保证：映射配置文件，与该接口同包同名：（扫描接口和与其同包同名的xml）
 
-```java
+```xml
 <mappers><package name="com.own.mapper"></mappers>
 ```
 
 ​			  ③加载某接口，同时把接口中对应的sql注解与当前方法进行加载：（没有②好用）			
 
-```java
+```xml
 <mapper class="com.own.mapper.IUserMapper"></mapper>
 ```
 
@@ -371,7 +371,6 @@ private Map<Object, Object> cache = new HashMap<Object, Object>();
 public void clear() {
 	cache.clear();
 }
-
 ```
 
 **cache何时被创建呢**？我们回退到Executor.java——在自定义mybatis中，我们知道Executor就是一个执行器，它的作用就是来执行sql，执行JDBC——我们找到createCacheKey—>进入BaseExecutor.java。
@@ -460,7 +459,7 @@ private <E> List<E> queryFromDatabase(...) throws SQLException {
 
 **注意**：settings需要配置在properties标签下。
 
-```java
+```xml
 <!--开启二级缓存  -->
 <settings>
 	<setting name="cacheEnabled" value="true"/>
