@@ -199,4 +199,34 @@ public class TransferServlet extends HttpServlet {
 }
 ```
 
-### 3.sping源码解析：
+### 3 spingIoC解析：
+
+**beans.xml**:定义需要实例化对象的类的全限定类名以及类之间依赖关系描述。
+
+**BeanFactory**(IoC容器)：通过反射来实例化对象并维护对象之间的依赖关系。
+
+**spring框架的IoC实现**：①纯注解、②xml+注解、③纯注解
+
+```java
+ⅠⅡ：JavaSE应用：ApplicationContext applicationContext = new classPathXmlApplicationContext("beans.xml");
+			或者：new FileSystemXmlApplicationContext("c:/beans.xml");
+     JavaWeb应用：ContextLoaderListener（监听器去加载xml）
+                
+Ⅲ：JavaSE应用：ApplicationContext applicationContext = new AnnotationConfigApplicationContext(SpringConfig.calss);
+   JavaWeb应用：ContextLoaderListener(监听器去加载注解配置类)
+```
+
+**学习技巧：找xml中标签（属性）和注解的一一对应关系即可**。
+
+```java
+(I)BeanFactory - org.springframework.beans.factory → spring容器的顶层接口。
+    (I)ApplicationContext - org.springframework.context → 常用的子接口。
+    	(C)ClassPathXmlApplicationContext：实现类1，从classpath下加载xml文件。
+    	(C)FileSystemXmlApplicationContext：实现类2：从文件系统加载xml文件。
+    	(C)AnnotationConfigApplicationContext：实现类3：纯注解模式下从java配置类加载配置信息。
+    
+```
+
+**ApplicationContext为什么直接使用BeanFactory呢**？
+
+**答**：这是spring框架设计的优雅之处，BeanFactory是一个顶层的接口，它里面定义了一些作为容器必须要具备的一些基础的功能。ApplicationContext作为它的子接口，功能更加丰富，比如说：资源加载（xml，java配置类都可以叫资源）。
