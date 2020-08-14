@@ -266,3 +266,80 @@ public void testIoC() {
 </bean>
 ```
 
+```xml
+<web-app><!--web.xml-->
+  <display-name>Archetype Created Web Application</display-name>
+  <!--配置Spring ioc容器的配置文件-->
+  <context-param>
+    <param-name>contextConfigLocation</param-name>
+    <param-value>classpath:applicationContext.xml</param-value>
+  </context-param>
+  <!--使用监听器启动Spring的IOC容器-->
+  <listener>
+    <listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
+  </listener>
+</web-app>
+```
+
+已知在TransferServlet.java中，proxyFactory它的获取还是通过自定义的手写的BeanFactory中去拿的，包括service层对象的获取。
+
+```java
+// 首先从BeanFactory获取到proxyFactory代理工厂的实例化对象
+private ProxyFactory proxyFactory = (ProxyFactory) BeanFactory.getBean("proxyFactory");
+private TransferService transferService = (TransferService) proxyFactory.getJdkProxy(BeanFactory.getBean("transferService"));
+
+```
+
+要去掉BeanFactory。报错。那怎么在TransferServlet从容器当中拿到对象呢？
+
+其实，web应用一启动，spring容器一初始化，这个容器已经被放到servletContext上下文当中了，此时，spring提供了一个工具类，可以方便的获取到IoC容器。容器拿到之后自然可以拿到里面的对象。
+
+```java
+@Override
+private TransferService transferService = null ;
+
+public void init() throws ServletException {
+	WebApplicationContext webApplicationContext = WebApplicationContextUtils.getWebApplicationContext(this.getServletContext());
+    ProxyFactory proxyFactory = (ProxyFactory)webApplicationContext.getBean("proxyFactory");
+    transferService = (TransferService) proxyFactory.getJdkProxy(webApplicationContext.getBean("transferService"))
+}
+```
+
+### 3.2 Bean的创建方式以及Bean标签属性的回顾：
+
+```xml
+<!--Spring ioc 实例化Bean的三种方式-->
+<!--方式一：使用无参构造器（推荐）-->
+<!--指定了class的全啊限定类名，底层是通过反射的技术，调用了这个class的无参构造器进行实例化-->
+<bean id="connectionUtils" class="com.own.utils.ConnectionUtils"></bean>
+<!--另外两种方式是为了让自己new的对象加入到SpringIOC容器管理，如果不通过它提供的接口加入进来，那么通过容器.getBean是获取不到自己new的对象的-->
+<!--方式二：静态方法-->
+<!--<bean id="connectionUtils" class="com.own.factory.CreateBeanFactory" factory-method="getInstanceStatic"/>-->
+<!--方式三：实例化方法-->
+<!--<bean id="createBeanFactory" class="com.own.factory.CreateBeanFactory"></bean>
+<bean id="connectionUtils" factory-bean="createBeanFactory" factory-method="getInstance"/>-->
+```
+
+假如在程序中，自己new一个对象，如何加入呢？在factory包下创建一个CreateBeanFactory.java
+
+```java
+public class CreateBeanFactory {
+    public static ConnectionUtils getInstanceStatic() {        return new ConnectionUtils();    }
+    public ConnectionUtils getInstance() {	return new ConnectionUtils();	}
+}
+```
+
+在test方法中写到：
+
+```java
+Object connectionUtils = applicationContext.getBean("connectionUtils");
+System.out.println(connectionUtils);
+```
+
+```
+<!--scope:定义bean的作用范围
+singleton:单例，工OC容器中只有一个该类对象。Bean对象生命周期与容器相同。
+prototype:原型(多例)，每次使用该类的对象(getBean)，都返回给你一个新的对象。Bean对象spring只负责创建，不负责销毁。
+-->
+```
+
