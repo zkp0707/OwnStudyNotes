@@ -1,4 +1,13 @@
-## 1 spring的IoC 和 AOP
+## 1 spring的IoC 和 AOP：
+
+**spring架构图**：
+
+```
+Web：Ⅰ、WebⅡ、ServletⅢ、WebSocketⅣ、Portlet
+Data Access:Ⅰ、JDBC Ⅱ、JMS Ⅲ、ORM Ⅳ、OXM
+	|→Ⅰ、AOPⅡ、AspectsⅢ、MessagingⅣ、Instrumentation
+		|Core Container→Ⅰ、CoreⅡ、ContextⅢ、BeansⅣ、SpEL
+```
 
 **IoC**：Inversion of Control（控制反转）。**控制**：对象创建（实例化、管理）的权利。**反转**：控制权交给了外部环境（spring框架、IoC容器）。
 
@@ -40,7 +49,7 @@ public class Animal ｛
 
 OOP只能解决对业务逻辑代码的抽取，AOP是对性能监控代码的抽取，即在多个纵向（顺序）流程汇总出现的相同子流程代码，为我们称之为横切逻辑代码。横切逻辑代码的使用场景很有限，一般是：事物控制、权限校验、日志。AOP在不改变原有业务逻辑情况下，增强横切逻辑代码，根本上姐耦合，避免横切代码重复。
 
-## 2 手写实现IoC和AOP
+## 2 手写实现IoC和AOP：
 
 ### 2.1 简单实现一个银行转账案例（略，A->B），及问题分析和改造。
 
@@ -199,7 +208,7 @@ public class TransferServlet extends HttpServlet {
 }
 ```
 
-### 3 spingIoC解析：
+## 3 spingIoC高级应用和源码解析：
 
 **beans.xml**:定义需要实例化对象的类的全限定类名以及类之间依赖关系描述。
 
@@ -230,3 +239,30 @@ public class TransferServlet extends HttpServlet {
 **ApplicationContext为什么直接使用BeanFactory呢**？
 
 **答**：这是spring框架设计的优雅之处，BeanFactory是一个顶层的接口，它里面定义了一些作为容器必须要具备的一些基础的功能。ApplicationContext作为它的子接口，功能更加丰富，比如说：资源加载（xml，java配置类都可以叫资源）。
+
+### 3.1 IoC的纯xml模式回顾：
+
+```java
+@Test
+public void testIoC() {
+    // 通过读取classpath下的xml文件来启动容器（xml模式SE应用下推荐）
+    ClassPathXmlApplicationContext applicationContext = new ClassPathXmlApplicationContext("classpath:applicationContext.xml");
+    // 不推荐使用
+    //ApplicationContext applicationContext1 = new FileSystemXmlApplicationContext("文件系统的绝对路径");
+    AccountDao accountDao = (AccountDao) applicationContext.getBean("accountDao");
+    System.out.println(accountDao);
+```
+
+```xml
+<!--applicationContext.xml-->
+<!--根标签beans，里面配置一个又一个的bean子标签，每一个bean子标签都代表一个类的配置-->
+<!--id标识对象，class是类的全限定类名-->
+<bean id="accountDao" class="com.own.dao.impl. JdbcAccountDaoImpl">
+	<property name="Connectionutils" ref="connectionUtils"/>
+</bean>
+<bean id="transferService" class="com.own.service.impl.TransferServiceImpl">
+	<!--set+ name之后锁定到传值的set方法了，通过反射技术可以调用该方法传入对应的值-->
+	<property name="AccountDao" ref="accountDao"></property>
+</bean>
+```
+
