@@ -673,6 +673,10 @@ public void testIoC() {
 }
 ```
 
+**BeanFactory容器继承体系**：
+
+![](https://s1.ax1x.com/2020/08/15/dkBj4x.png)
+
 以 ClasspathXmlApplicationContext 为例，深⼊源码说明 IoC 容器的初始化流程。
 
 ②**Bean⽣命周期关键时机点**：
