@@ -343,3 +343,149 @@ prototype:原型(多例)，每次使用该类的对象(getBean)，都返回给�
 -->
 ```
 
+**Bean标签属性中的"init-method"属性，"destory-method"属性**。
+
+```xml
+<!--applicationContext.xml-->
+<bean id="accountDao" class="com.lagou.own.impl.JdbcTemplateDaoImpl" scope="singleton" init-method="init" destroy-method="destory">
+    <!--set注入使用property标签，如果注入的是另外一个bean那么使用ref属性，如果注入的是普通值那么使用的是value属性-->
+    <property name="ConnectionUtils" ref="connectionUtils"/>
+</bean>
+```
+
+```java
+//在JdbcAccountDaoImpl.java中：
+public void init(){
+    system.out.println("初始化方法。。。");
+}
+public void destory(){
+    system.out.println("销毁方法。。。");
+}
+```
+
+这个时候我们运行textIoC方法，发现只打印了“初始化方法。。。”，因为我们的对象只有一个，初始化只有一次，方法只会被调用一次。那销毁方法呢？其实我们整个applicationContext容器并没有关闭，在下面追加applicationContext.close();即可调用destory()方法。
+
+注意到，此时的scope="singleton"如果是"prototype"这个多例类型，多例类型的对象，是不在容器的管理范围之内的，容器给你创建对象之后就丢出去不管了，那么销毁的时候就调不到销毁方法了，因为对象已经不在管理范围之内了。
+
+### 3.3 spring DI依赖注入配置回顾：
+
+DI，依赖注入，往一个对象传值。不考虑spring如何来做的话，就一个普通的对象，用最基本的方式往里面传值的话，也是通过①构造函数（顾名思义，就是利用带参构造函数实现对类成员变量的数据赋值）②set方法（通过类成员的set方法实现数据的注入，也是使用最多的）。其实spring在实现依赖注入的时候，也是这么去做的。
+
+其实目前我们的代码当中依赖关系的维护，向一个对象传入另一个对象，使用的是set方法。例如Dao层的实现类，我们需要传入一个connectionUtils，声明了一个属性，然后给该属性添加了set方法，外部就可以传参进来了。
+
+```java
+public class JdbcAccountDaoImpl implements AccountDao{
+    privaate ConnectionUtils connectionUtils;
+  	public void setConnectionUtils(ConectionUtils connectionUtils){
+        this.connectionUtils = connectionUtils;
+    }... ...
+```
+
+```xml
+<!--applicationContext.xml-->
+<bean id="accountDao" class="com.lagou.own.impl.JdbcTemplateDaoImpl" scope="singleton" init-method="init" destroy-method="destory">
+    <!--set注入使用property标签，如果注入的是另外一个bean那么使用ref属性，如果注入的是普通值那么使用的是value属性-->
+    <property name="ConnectionUtils" ref="connectionUtils"/>
+</bean>
+```
+
+```xml
+ <!--set注入使用property标签，如果注入的是另外一个bean那么使用ref属性，如果注入的是普通值那么使用的是value属性-->
+<property name="ConnectionUtils" ref="connectionUtils"/>
+<property name="name" value="zhangsan"/>
+<property name="sex" value="1"/>
+<property name="money" value="100.3"/>
+
+
+<constructor-arg index="0" ref="connectionUtils"/>
+<constructor-arg index="1" value="zhangsan"/>
+<constructor-arg index="2" value="1"/>
+<constructor-arg index="3" value="100.5"/>
+
+<!--name：按照参数名称注入，index按照参数索引位置注入-->
+<constructor-arg name="connectionUtils" ref="connectionUtils"/>
+<constructor-arg name="name" value="zhangsan"/>
+<constructor-arg name="sex" value="1"/>
+<constructor-arg name="money" value="100.6"/>
+```
+
+```java
+public class JdbcAccountDaoImpl implements AccountDao {
+
+private ConnectionUtils connectionUtils;
+private String name;
+private int sex;
+private float money;
+
+public void setConnectionUtils(ConnectionUtils connectionUtils) {
+    this.connectionUtils = connectionUtils;
+}
+public void setName(String name) {
+    this.name = name;
+}
+
+public void setSex(int sex) {
+    this.sex = sex;
+}
+
+public void setMoney(float money) {
+    this.money = money;
+}
+    
+public JdbcAccountDaoImpl(ConnectionUtils connectionUtils, String name, int sex, float money) {
+    this.connectionUtils = connectionUtils;
+    this.name = name;
+    this.sex = sex;
+    this.money = money;
+}
+```
+
+```xml
+<!--set注入注入复杂数据类型-->
+<property name="myArray">
+    <array>
+        <value>array1</value>
+        <value>array2</value>
+        <value>array3</value>
+    </array>
+</property>
+<property name="myMap">
+    <map>
+        <entry key="key1" value="value1"/>
+        <entry key="key2" value="value2"/>
+    </map>
+</property>
+<property name="mySet">
+    <set>
+        <value>set1</value>
+        <value>set2</value>
+    </set>
+</property>
+<property name="myProperties">
+    <props>
+        <prop key="prop1">value1</prop>
+        <prop key="prop2">value2</prop>
+    </props>
+</property>
+//注：set标签和array数组标签可以替换，props也可以和map替换。原因：array和set都是单执行的集合，底层都一样。map和props是键值对的形式。
+```
+
+```java
+public class JdbcAccountDaoImpl implements AccountDao {
+    private String[] myArray;
+    private Map<String,String> myMap;
+    private Set<String> mySet;
+    private Properties myProperties;
+    ... ...
+        public Account queryAccountByCardNo(String cardNo) throws Exception {
+        //从连接池获取连接
+        // Connection con = DruidUtils.getInstance().getConnection();
+        Connection con = connectionUtils.getCurrentThreadConn();//此处打断点
+        ... ...
+    }... ...
+}//看一下connectionUtil中是否包含内容。
+```
+
+## 3.4 xml和注解相结合模式回顾：
+
+xml+注解结合模式，xml文件依然存在，所以，springIoC容器的启动仍然从家中xml开始。一般情况，第三方jar中的bean定义在xml，自己开发的bean定义使用注解。
