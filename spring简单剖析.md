@@ -240,7 +240,9 @@ public class TransferServlet extends HttpServlet {
 
 **答**：这是spring框架设计的优雅之处，BeanFactory是一个顶层的接口，它里面定义了一些作为容器必须要具备的一些基础的功能。ApplicationContext作为它的子接口，功能更加丰富，比如说：资源加载（xml，java配置类都可以叫资源）。
 
-### 3.1 IoC的纯xml模式回顾：
+### 3.1 spring IoC基础：
+
+#### 3.1.1 IoC的纯xml模式回顾：
 
 ```java
 @Test
@@ -305,7 +307,7 @@ public void init() throws ServletException {
 }
 ```
 
-### 3.2 Bean的创建方式以及Bean标签属性的回顾：
+#### 3.1.2 Bean的创建方式以及Bean标签属性的回顾：
 
 ```xml
 <!--Spring ioc 实例化Bean的三种方式-->
@@ -367,7 +369,7 @@ public void destory(){
 
 注意到，此时的scope="singleton"如果是"prototype"这个多例类型，多例类型的对象，是不在容器的管理范围之内的，容器给你创建对象之后就丢出去不管了，那么销毁的时候就调不到销毁方法了，因为对象已经不在管理范围之内了。
 
-### 3.3 spring DI依赖注入配置回顾：
+#### 3.1.3 spring DI依赖注入配置回顾：
 
 DI，依赖注入，往一个对象传值。不考虑spring如何来做的话，就一个普通的对象，用最基本的方式往里面传值的话，也是通过①构造函数（顾名思义，就是利用带参构造函数实现对类成员变量的数据赋值）②set方法（通过类成员的set方法实现数据的注入，也是使用最多的）。其实spring在实现依赖注入的时候，也是这么去做的。
 
@@ -486,6 +488,192 @@ public class JdbcAccountDaoImpl implements AccountDao {
 }//看一下connectionUtil中是否包含内容。
 ```
 
-## 3.4 xml和注解相结合模式回顾：
+**xml和注解相结合模式回顾**：
 
 xml+注解结合模式，xml文件依然存在，所以，springIoC容器的启动仍然从家中xml开始。一般情况，第三方jar中的bean定义在xml，自己开发的bean定义使用注解。
+
+### 3.2 spring IoC高级特性：
+
+#### 3.2.1 lazy-init 延迟加载：
+
+ApplicationContext 容器的默认⾏为是在启动服务器时将所有 singleton bean 提前进⾏实例化。提前实例化意味着作为初始化过程的⼀部分，ApplicationContext 实例会创建并配置所有的singleton bean。
+
+```xml
+<!--lazy-init：配置bean对象的延迟加载，true/false，默认为false，立即加载。-->
+<bean id="lazyResult" class="com.own.pojo.Result" lazy-init="false">
+```
+
+```java
+// 测试bean的lazy-init属性
+@Test
+public void testBeanLazy(){
+//启动容器（容器初始化）
+ClassPathXmlApplicationContext applicationContext = new ClassPathXmlApplicationContext("classpath:applicationContext.xml");
+//getBean获取bean对象使用
+Object lazyResult = applicationContext.getBean("lazyResult");//打断点
+//applicationContext->beanFactory->singletonObjects(map)->lazyResult.
+//说明在容器初始化的时候，bean对象完成了创建。此时再getBean时，就从容器（缓存）中拿了出来。
+System.out.println(lazyResult);
+}
+```
+
+```xml
+<!--lazy-init：配置bean对象的延迟加载，true/false，默认为false，立即加载。-->
+<bean id="lazyResult" class="com.own.pojo.Result" lazy-init="true">
+```
+
+此时的singletonObjects就没有了lazyResult。往下走一步时，便出现了。
+
+注解模式：在pojo对象上添加@lazy注解。默认为true。
+
+**全局bean配置lazy-init**：在applicationContext.xml的头beans标签的头中加：default-lazy-init="true/default/false"。
+
+**应用场景**：
+
+①开启延迟加载⼀定程度提⾼容器启动和运转性能。
+②对于不常使⽤的 Bean 设置延迟加载，这样偶尔使⽤的时候再加载，不必要从⼀开始该 Bean 就占
+⽤资源。
+
+#### 3.2.2 FactoryBean 和 BeanFactory:
+
+BeanFactory接⼝是容器的顶级接⼝，定义了容器的⼀些基础⾏为，负责⽣产和管理Bean的⼀个⼯⼚，具体使⽤它下⾯的⼦接⼝类型，⽐如ApplicationContext；此处我们重点分析FactoryBean。
+
+Spring中Bean有两种，⼀种是普通Bean，⼀种是⼯⼚Bean（FactoryBean），FactoryBean可以⽣成某⼀个类型的Bean实例（返回给我们），也就是说我们可以借助于它⾃定义Bean的创建过程。
+
+Bean创建的三种⽅式中的静态⽅法和实例化⽅法和FactoryBean作⽤类似，FactoryBean使⽤较多，尤其在Spring框架⼀些组件中会使⽤，还有其他框架和Spring框架整合时使⽤。
+
+进入FactoryBean(接口)：
+
+```java
+// 可以让我们⾃定义Bean的创建过程（完成复杂Bean的定义）
+public interface FactoryBean<T> {
+    @Nullable
+    // 返回FactoryBean创建的Bean实例，如果isSingleton返回true，则该实例会放到Spring容器的单例对象缓存池中(Map
+    T getObject() throws Exception;
+    @Nullable
+    // 返回FactoryBean创建的Bean类型
+    Class<?> getObjectType();
+    // 返回作⽤域是否单例
+    default boolean isSingleton() {
+    return true;
+	}}
+```
+
+**案例**：使用FactoryBean创建一个Bean对象(company)，加入到springIoC容器中管理。先在pojo包中创建company实体类，然后实现FactoryBean接口。
+
+```java
+public class CompanyFactoryBean implements FactoryBean<Company> {
+    private String companyInfo; // 公司名称,地址,规模
+    public void setCompanyInfo(String companyInfo) {
+    	this.companyInfo = companyInfo;
+	}
+@Override
+public Company getObject() throws Exception {
+    // 模拟创建复杂对象Company
+    Company company = new Company();
+    String[] strings = companyInfo.split(",");
+    company.setName(strings[0]);
+    company.setAddress(strings[1]);
+    company.setScale(Integer.parseInt(strings[2]));
+    return company;
+}
+@Override
+public Class<?> getObjectType() {
+	return Company.class;
+}
+@Override
+public boolean isSingleton() {
+	return true;
+}}
+```
+
+怎么把它配置在springIoC中呢？在applicationContext.xml文件中：
+
+```xml
+<bean id="companyBean" class="com.own.factory.CompanyFactoryBean">
+	<property name="companyInfo" value="哈哈,上海,100"/>
+</bean>
+```
+
+接下来启动容器，获取companyFactoryBean。此时获取的，是FactoryBean实现类类型，还是FactoryBean帮我们产生的Company类型。
+
+```java
+Object companyBean = applicationContext.getBean("companyBean");
+System.out.println("bean:" + companyBean);
+//结果：bean:Company{name='哈哈', address='上海', scale=100}
+```
+
+说明FactoryBean属性是帮我们生成另外一个Bean，虽然我们在xml中指定的是FactoryBean，但是它的功能就是抛出另外一个Bean。若非要获取CompanyFactoryBean，则需在getBean(name:"&Beanid")。FactoryBean在spring一些组件，包括其他框架向spring整合时，底层用的还是很多。
+
+#### 3.2.3 后置处理器：
+
+在框架中，但凡说到XXX器，其实往往都是预留的扩展接口，以什么形式来提供扩展呢?往往是提供了一个接口让我们去实现。
+
+spring提供了两种后处理bean的扩展接口：①、BeanPostProcesssor ②、BeanFactoryPostProcessor。
+
+一个产品要生产出来要先有工厂。工厂初始化(BeanFactory)->Bean对象。
+
+①在BeanFactory初始化之后，可以使用BeanFactoryPostProcessor进行后置处理做一些事情。
+
+②在Bean对象实例化（并不是Bean整个生命周期完成）之后，可以使用BeanPostProcesssor 进行后置处理做一些事情。 
+
+spring中的Bean肯定是一个对象，但一个对象不一定是springBean，因为要经过一个流水线，走完这个流水线才能称之为springBean。
+
+springBean生命周期：
+
+```java
+Ⅰ、实例化Bean Ⅱ、设置属性值 Ⅲ、调用BeanNameAware的setBeanName方法 Ⅳ、调用BeanFactoryAware的setBeanFactory方法
+Ⅴ、调用ApplicationContextAware的setApplicationContext方法Ⅵ、调用BeanPostProcessor的预初始化方法
+Ⅶ、调用InitializingBean的afterProperties方法 Ⅷ、调用定制的初始化方法init-method.
+Ⅸ、调用BeanPostProcessor的后初始化方法：prototype:将准备就绪的Bean交给调用者。singleton：spring缓存池中准备就绪的Bean->Bean销毁：调用DisposableBean的方法/调用destroy-method属性配置的销毁方法。
+
+Bean生命周期的整个执行过程描述:
+1）根据配置情况调用Bean构造方法或工厂方法实例化Bean。
+2）利用依赖注入完成Bean中所有属性值的配置注入。
+3）如果Bean实现了BeanNameAware接口，则Spring调用Bean的setBeanName()方法传入当前Bean的id值。
+4）如果Bean实现了BeanFactoryAware接口，则Spring调用setBeanFactory)方法传入当前工厂实例的引用。
+5）如果Bean实现了ApplicationContextAware接口，则Spring调用setApplicationContext(方法传入当前ApplicationContext 实例的引用。
+6）如果BeanPostProcessor和Bean关联，则Spring 将调用该接口的预初始化方法postProcessBeforelnitialzation)对Bean进行加工操作，此处非常重要，Spring	的AOP就是利用它实现的。
+7）如果Bean实现了InitializingBean接口，则Spring将调用afterPropertiesSet()方法。
+8）如果在配置文件中通过init-method属性指定了初始化方法，则调用该初始化方法。
+9）如果BeanPostProcessor和Bean关联，则Spring将调用该接口的初始化方法postProcessAfterlnitialization()。此时，Bean已经可以被应用系统使用了。
+10)如果在<bean>中指定了该Bean的作用范围为scope="singleton"，则将该Bean放入Spring loC的缓存池中，
+	将触发Spring对该Bean的生命周期管理;如果在<bean>中指定了该Bean的作用范围为scope="prototype"，则将该Bean交给调用者。
+11）如果Bean实现了DisposableBean接口，则Spring 会调用destory)方法将Spring 中的Bean销毁;
+	如果在配置文件中通过destory-method属性指定了Bean的销毁方法，则Spring将调用该方法对Bean进行销毁。
+注意∶Spring为Bean 提供了细致全面的生命周期过程，通过实现特定的接口或<bean>的属性设置，都可以对Bean的生命周期过程产生
+	虽然可以随意配置<bean>的属性，但是建议不要过多地使用Bean实现接口，因为这样会导致代码和Spring 的聚合过于紧密。
+```
+
+### 3.3 spring IoC源码深度剖析：
+
+**Spring源码构建**：
+①下载源码（github②安装gradle ③导⼊（耗费⼀定时间）④编译⼯程（顺序：core-oxm-context-beans-aspects-aop）⑤⼯程—>tasks—>compileTestJava。
+
+我们在spring-framework里面写一个测试类。IoCTest.java
+
+#### 3.3.1 spring IoC容器初始化主体流程：
+
+①**springIoC的容器体系**：
+
+```java
+public void testIoC() {
+    // ApplicationContext是容器的高级接口，BeanFacotry（顶级容器/根容器，规范了/定义了容器的基础行为）
+    // Spring应用上下文，官方称之为 IoC容器（错误的认识：容器就是map而已；准确来说，map是ioc容器的一个成员，
+    // 叫做单例池, singletonObjects,容器是一组组件和过程的集合，包括BeanFactory、单例池、BeanPostProcessor等以及之间的协作流程）
+    /**
+    * Ioc容器创建管理Bean对象的，Spring Bean是有生命周期的
+    * 构造器执行、初始化方法执行、Bean后置处理器的before/after方法、：AbstractApplicationContext#refresh#finishBeanFactoryInitialization
+    * Bean工厂后置处理器初始化、方法执行：AbstractApplicationContext#refresh#invokeBeanFactoryPostProcessors
+    * Bean后置处理器初始化：AbstractApplicationContext#refresh#registerBeanPostProcessors
+    */
+    ApplicationContext applicationContext = new ClassPathXmlApplicationContext("classpath:applicationContext.xml");
+    OwnBean ownBean = applicationContext.getBean(OwnBean.class);
+    System.out.println(ownBean);
+}
+```
+
+以 ClasspathXmlApplicationContext 为例，深⼊源码说明 IoC 容器的初始化流程。
+
+②**Bean⽣命周期关键时机点**：
+
